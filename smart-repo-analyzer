@@ -1,0 +1,61 @@
+# pip install -U gitingest openai nest-asyncio
+
+# 1. Import libraries
+from gitingest import ingest
+import openai
+import nest_asyncio
+
+# 2. Apply nest_asyncio to handle nested event loops in Jupyter
+nest_asyncio.apply()
+
+# 3. Ingest the GitHub repo and convert it into LLM-friendly format
+summary, tree, content = ingest("https://github.com/patrickloeber/snake-ai-pytorch")
+
+# 4. Print basic info about the repo
+print("📦 Repo Summary:\n", summary)
+print("\n🗂️ Repo Structure:\n", tree)
+
+# 5. Setup SambaNova client
+sambanova_api_key = "SAMBANOVA_API_KEY"  # 🔐 Replace with your real key
+client = openai.OpenAI(
+    api_key=sambanova_api_key,
+    base_url="https://api.sambanova.ai/v1",  # SambaNova LLM endpoint
+)
+
+# 6. Ask the model to explain model.py
+prompt = f"""Explain what the model.py file does:
+
+Code:
+{content}
+"""
+
+response = client.chat.completions.create(
+    model="Llama-4-Maverick-17B-128E-Instruct",
+    messages=[
+        {"role": "user", "content": prompt}
+    ],
+    temperature=0.1,
+    top_p=0.1
+)
+
+# 7. Print the explanation
+explanation = response.choices[0].message.content
+print("📘 Explanation of model.py:\n")
+print(explanation)
+
+# 8. Ask for a code refactor suggestion
+follow_up_prompt = "Refactor the `save` function to use pathlib"
+response = client.chat.completions.create(
+    model="Llama-4-Maverick-17B-128E-Instruct",
+    messages=[
+        {"role": "user", "content": prompt},
+        {"role": "assistant", "content": explanation},
+        {"role": "user", "content": follow_up_prompt}
+    ],
+    temperature=0.1,
+    top_p=0.1
+)
+
+# 9. Print the refactored code
+print("\n🔧 Refactored `save` function using pathlib:\n")
+print(response.choices[0].message.content)
